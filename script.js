@@ -2,7 +2,7 @@ window.addEventListener("load", function () {
   // canvas setup
   const canvas = document.getElementById("canvas1");
   const ctx = canvas.getContext("2d");
-  canvas.width = 1500;
+  canvas.width = 500;
   canvas.height = 500;
 
   class InputHandler {
@@ -104,6 +104,8 @@ window.addEventListener("load", function () {
       this.x = this.game.width;
       this.speedX = Math.random() * -1.5 - 0.5;
       this.markedForDeletion = false;
+      this.lives = 5;
+      this.score = this.lives;
     }
 
     update() {
@@ -113,6 +115,9 @@ window.addEventListener("load", function () {
     draw(context) {
       context.fillStyle = "red";
       context.fillRect(this.x, this.y, this.width, this.height);
+      context.fillStyle = "black";
+      context.fillText(this.lives, this.x, this.y, this.height);
+      context.font = "20px Helvetica";
     }
   }
 
@@ -132,17 +137,26 @@ window.addEventListener("load", function () {
   class Ui {
     constructor(game) {
       this.game = game;
-      this.fontSize = 205;
+      this.fontSize = 25;
       this.fontFamily = "Helvetica";
-      this.color = "yellow";
+      this.color = "white";
     }
 
     draw(context) {
-      //ammo
+      context.save();
+      context.font = `${this.fontSize}px ${this.fontFamily}`;
+      context.shadowOffsetX = 2;
+      context.shadowOffsetY = 2;
+      context.shadowColor = "black";
       context.fillStyle = this.color;
+      //score
+      context.fillText("Score: " + this.game.score, 20, 40);
+
+      //ammo
       for (let i = 0; i < this.game.ammo; i++) {
         context.fillRect(20 + 5 * i, 50, 3, 20);
       }
+      context.restore();
     }
   }
 
@@ -162,6 +176,8 @@ window.addEventListener("load", function () {
       this.ammoTimer = 0;
       this.ammoInterval = 500;
       this.gameOver = false;
+      this.score = 0;
+      this.winningScore = 10;
     }
 
     update(deltaTime) {
@@ -175,17 +191,34 @@ window.addEventListener("load", function () {
 
       this.enemies.forEach((enemy) => {
         enemy.update();
+        if (this.checkCollisions(this.player, enemy)) {
+          enemy.markedForDeletion = true;
+        }
+
+        this.player.projectiles.forEach((projectile) => {
+          if (this.checkCollisions(projectile, enemy)) {
+            enemy.lives--;
+            projectile.markedForDeletion = true;
+
+            if (enemy.lives <= 0) {
+              enemy.markedForDeletion = true;
+              this.score += enemy.score;
+              if (this.score >= this.winningScore) {
+                this.gameOver = true;
+              }
+            }
+          }
+        });
       });
 
       this.enemies = this.enemies.filter((enemy) => !enemy.markedForDeletion);
 
       if (this.enemyTimer > this.enemyInterval && !this.gameOver) {
-          this.addEnemy();
-          this.enemyTimer = 0;
-        } else {
-          this.enemyTimer += deltaTime;
-        }
-      
+        this.addEnemy();
+        this.enemyTimer = 0;
+      } else {
+        this.enemyTimer += deltaTime;
+      }
     }
 
     draw(context) {
@@ -197,8 +230,17 @@ window.addEventListener("load", function () {
     }
 
     addEnemy() {
-      console.log('add', this.enemies);
+      console.log("add", this.enemies);
       this.enemies.push(new Angler1(this));
+    }
+
+    checkCollisions(rect1, rect2) {
+      return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+      );
     }
   }
 
